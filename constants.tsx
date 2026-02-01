@@ -7,7 +7,7 @@ export const QUESTIONS: Question[] = [
   { id: 3, text: "I am good at working independently", category: 'I' },
   { id: 4, text: "I like to work in teams", category: 'S' },
   { id: 5, text: "I am an ambitious person, I set goals for myself", category: 'E' },
-  { id: 6, text: "I like to organize things, (files, desks/offices)", category: 'C' },
+  { id: 6, text: "I like to organize things (files, desks/offices)", category: 'C' },
   { id: 7, text: "I like to build things", category: 'R' },
   { id: 8, text: "I like to read about art and music", category: 'A' },
   { id: 9, text: "I like to have clear instructions to follow", category: 'C' },
@@ -46,36 +46,42 @@ export const QUESTIONS: Question[] = [
   { id: 42, text: "I like to give speeches", category: 'E' },
 ];
 
-export const CATEGORY_DESCRIPTIONS: Record<CategoryKey, { title: string, description: string, color: string }> = {
+export const CATEGORY_DESCRIPTIONS: Record<CategoryKey, { title: string, description: string, color: string, majors: string[] }> = {
   R: { 
     title: "Realistic (Doers)", 
-    description: "You often have athletic or mechanical ability, prefer to work with objects, machines, tools, plants or animals, or to be outdoors.", 
-    color: "#10b981" 
+    description: "These people are often good at mechanical or athletic jobs. They prefer to work with things, such as objects, machines, tools, plants, or animals.", 
+    color: "#0284c7", 
+    majors: ["Agriculture", "Health Assistant", "Computers", "Construction", "Mechanic/Machinist", "Engineering", "Food and Hospitality"]
   },
   I: { 
     title: "Investigative (Thinkers)", 
-    description: "You like to observe, learn, investigate, analyze, evaluate or solve problems. You value science and precision.", 
-    color: "#3b82f6" 
+    description: "These people like to watch, learn, analyze and solve problems. They value science, knowledge, and intellectual challenge.", 
+    color: "#2563eb", 
+    majors: ["Marine Biology", "Engineering", "Chemistry", "Zoology", "Medicine/Surgery", "Consumer Economics", "Psychology"]
   },
   A: { 
     title: "Artistic (Creators)", 
-    description: "You have artistic, innovating or intuitional abilities and like to work in unstructured situations using your imagination and creativity.", 
-    color: "#ec4899" 
+    description: "These people like to work in unstructured situations where they can use their creativity. They have artistic, innovative, or intuitional abilities.", 
+    color: "#4f46e5", 
+    majors: ["Communications", "Cosmetology", "Fine and Performing Arts", "Photography", "Radio and TV", "Interior Design", "Architecture"]
   },
   S: { 
     title: "Social (Helpers)", 
-    description: "You like to work with people to enlighten, inform, help, train, or cure them, or are skilled with words.", 
-    color: "#14b8a6" 
+    description: "These people like to work with other people, rather than things. They enjoy teaching, helping, or caring for others.", 
+    color: "#0d9488", 
+    majors: ["Counseling", "Nursing", "Physical Therapy", "Travel", "Advertising", "Public Relations", "Education"]
   },
   E: { 
     title: "Enterprising (Persuaders)", 
-    description: "You like to work with people, influencing, persuading, performing, leading or managing for organizational goals or economic gain.", 
-    color: "#f59e0b" 
+    description: "These people like to work with others and enjoy persuading and performing. They are often leaders who value influence and business success.", 
+    color: "#1e3a8a", 
+    majors: ["Fashion Merchandising", "Real Estate", "Marketing/Sales", "Law", "Political Science", "International Trade", "Banking/Finance"]
   },
   C: { 
     title: "Conventional (Organizers)", 
-    description: "You like to work with data, have clerical or numerical ability, carry out tasks in detail or follow through on others' instructions.", 
-    color: "#64748b" 
+    description: "These people are very detail oriented, organized and like to work with data. They value rules, clarity, and precision in structured environments.", 
+    color: "#475569", 
+    majors: ["Accounting", "Court Reporting", "Insurance", "Administration", "Medical Records", "Banking", "Data Processing"]
   },
 };
 
@@ -90,41 +96,45 @@ export const PATHWAYS_BY_CATEGORY: Record<CategoryKey, string[]> = {
 
 export const CAREER_DATABASE: Record<CategoryKey, string[]> = {
   R: [
-    "Aerospace Engineering Technician", "Agricultural Inspector", "Aircraft Mechanic", "Animal Trainer",
-    "Automotive Master Mechanic", "Civil Engineer", "Electrician", "Commercial Pilot", "Construction Laborer",
-    "Diver", "Dredge Operator", "Electronic Drafter", "Farmworker", "Forest Fire Fighter", "Machinist",
-    "Radio Mechanic", "Roustabout", "Sheet Metal Worker", "Surveyor", "Welder"
+    "Aerospace Engineering Technician", "Agricultural Equipment Operator", "Agricultural Inspector", "Aircraft Mechanic",
+    "Airline Pilot", "Ambulance Driver", "Animal Breeder", "Athletes and Sports Competitor", "Automotive Master Mechanic",
+    "Civil Engineer", "Commercial Pilot", "Construction Carpenter", "Cook, Restaurant", "Dental Laboratory Technician",
+    "Electrician", "Engine Assembler", "Environmental Engineering Technician", "Farmworker",
+    "Fire Fighter", "Glazier", "Industrial Machinery Mechanic", "Landscaping Worker", "Machinist",
+    "Medical Equipment Repairer", "Millwright", "Pipe Fitter", "Plumber", "Surveyor", "Welder"
   ],
   I: [
-    "Aerospace Engineer", "Anesthesiologist", "Astronomer", "Biochemist", "Clinical Psychologist",
-    "Computer Programmer", "Data Scientist", "Dentist", "Economist", "Environmental Scientist",
-    "Geoscientist", "Hydrologist", "Medical Scientist", "Pharmacist", "Physicist", "Software Developer",
-    "Veterinarian", "Zoologist", "Mathematician", "Microbiologist"
+    "Aerospace Engineer", "Anesthesiologist", "Astronomer", "Biochemist", "Biologist", "Chemical Engineer",
+    "Clinical Psychologist", "Computer Hardware Engineer", "Computer Programmer", "Data Scientist", "Dentist",
+    "Dietitian", "Economist", "Electrical Engineer", "Environmental Scientist", "Forensic Science Technician",
+    "Geoscientist", "Hydrologist", "Industrial Engineer", "Market Research Analyst", "Mathematician",
+    "Mechanical Engineer", "Medical Scientist", "Pharmacist", "Physicist", "Software Developer", "Veterinarian"
   ],
   A: [
-    "Actor", "Art Director", "Choreographer", "Composer", "Craft Artist", "Dancer", "Editor",
-    "Fashion Designer", "Graphic Designer", "Interior Designer", "Landscape Architect", "Photographer",
-    "Poet/Lyricist", "Radio/TV Announcer", "Singer", "Technical Writer", "Desktop Publisher",
-    "Floral Designer", "Hairdresser", "Interpreter/Translator"
+    "Actor", "Architect", "Art Director", "Broadcast News Analyst", "Choreographer", "Commercial Designer",
+    "Craft Artist", "Dancer", "Desktop Publisher", "Editor", "Fashion Designer", "Film and Video Editor",
+    "Graphic Designer", "Interior Designer", "Interpreter and Translator", "Landscape Architect", "Model",
+    "Music Director", "Musician", "Photographer", "Poet and Lyricist", "Radio/TV Announcer", "Technical Writer"
   ],
   S: [
-    "Adult Literacy Teacher", "Athletic Trainer", "Child Care Worker", "Counseling Psychologist",
-    "Dental Hygienist", "Elementary School Teacher", "Emergency Medical Technician", "Fitness Trainer",
-    "High School Teacher", "Librarian", "Nurse", "Occupational Therapist", "Physical Therapist",
-    "Physician Assistant", "Social Worker", "Special Education Teacher", "Speech-Language Pathologist",
-    "Tour Guide", "Waiter/Waitress", "Educational Counselor"
+    "Adult Literacy Teacher", "Athletic Trainer", "Child Care Worker", "Chiropractor", "Clergy",
+    "Counseling Psychologist", "Dental Hygienist", "Educational Counselor", "Elementary School Teacher",
+    "Emergency Medical Technician", "High School Teacher", "Librarian", "Nurse", "Occupational Therapist",
+    "Physical Therapist", "Physician Assistant", "Psychiatric Technician", "Registered Nurse", "Social Worker",
+    "Speech-Language Pathologist", "Special Education Teacher", "Tour Guide"
   ],
   E: [
-    "Administrative Services Manager", "Advertising Sales Agent", "Chief Executive", "Construction Manager",
-    "Customer Service Representative", "Financial Manager", "Judge", "Lawyer", "Marketing Manager",
-    "Personal Financial Advisor", "Public Relations Specialist", "Real Estate Broker", "Sales Manager",
-    "Transportation Manager", "Travel Agent", "Purchasing Agent", "Lodging Manager", "Hotel Manager",
-    "Flight Attendant", "Entrepreneur"
+    "Administrative Services Manager", "Advertising Sales Agent", "Air Traffic Controller", "Appraiser",
+    "Chief Executive", "Construction Manager", "Customer Service Representative", "Curator", "Employment Interviewer",
+    "Financial Manager", "Food Service Manager", "Funeral Director", "Hotel Manager", "Insurance Sales Agent",
+    "Judge", "Lawyer", "Marketing Manager", "Public Relations Manager", "Purchasing Manager", "Real Estate Broker",
+    "Sales Manager", "Travel Agent"
   ],
   C: [
-    "Accountant", "Actuary", "Auditor", "Bill/Account Collector", "Bookkeeping Clerk", "Budget Analyst",
-    "Cargo Agent", "Cashier", "Computer Operator", "Cost Estimator", "Data Entry Keyer", "Database Administrator",
-    "File Clerk", "Financial Analyst", "Insurance Underwriter", "Legal Secretary", "Loan Officer",
-    "Medical Records Technician", "Payroll Clerk", "Pharmacy Aide", "Proofreader", "Teller"
+    "Account accountant", "Actuary", "Archivist", "Assessor", "Auditor", "Bill and Account Collector",
+    "Bookkeeping Clerk", "Budget Analyst", "Cashier", "Computer Operator", "Cost Estimator", "Data Entry Keyer",
+    "Database Administrator", "File Clerk", "Financial Analyst", "Insurance Underwriter", "Legal Secretary",
+    "Loan Officer", "Medical Records Technician", "New Accounts Clerk", "Payroll Clerk", "Pharmacy Technician",
+    "Postal Service Clerk", "Proofreader", "Statistical Assistant", "Tax Preparer", "Teller", "Web Developer"
   ]
 };

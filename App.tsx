@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { GoogleGenAI } from "@google/genai";
 import { QUESTIONS, CATEGORY_DESCRIPTIONS, CAREER_DATABASE, PATHWAYS_BY_CATEGORY } from './constants';
 import { CategoryKey, QuizResults } from './types';
 
@@ -7,6 +8,12 @@ const App: React.FC = () => {
   const [step, setStep] = useState<'intro' | 'quiz' | 'results'>('intro');
   const [answers, setAnswers] = useState<Record<number, boolean>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [occupationSearch, setOccupationSearch] = useState('');
+  
+  // AI Insights State
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [groundingLinks, setGroundingLinks] = useState<{title: string, uri: string}[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleAnswer = (val: boolean) => {
     setAnswers(prev => ({ ...prev, [QUESTIONS[currentQuestionIndex].id]: val }));
@@ -26,7 +33,11 @@ const App: React.FC = () => {
     });
 
     const topThree = (Object.keys(scores) as CategoryKey[])
-      .sort((a, b) => scores[b] - scores[a])
+      .sort((a, b) => {
+        if (scores[b] !== scores[a]) return scores[b] - scores[a];
+        const order: CategoryKey[] = ['R', 'I', 'A', 'S', 'E', 'C'];
+        return order.indexOf(a) - order.indexOf(b);
+      })
       .slice(0, 3);
 
     return {
@@ -36,26 +47,85 @@ const App: React.FC = () => {
     };
   }, [answers]);
 
+  const filteredOccupations = useMemo(() => {
+    const allMatching = results.topThree.flatMap(key => CAREER_DATABASE[key]);
+    const unique = Array.from(new Set(allMatching)) as string[];
+    if (!occupationSearch) return unique;
+    return unique.filter((occ: string) => occ.toLowerCase().includes(occupationSearch.toLowerCase()));
+  }, [results, occupationSearch]);
+
+  const fetchRealTimeInsights = async () => {
+    setIsSearching(true);
+    setAiInsights(null);
+    setGroundingLinks([]);
+    
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Based on the RIASEC career interest code "${results.code}" (Top interest: ${CATEGORY_DESCRIPTIONS[results.topThree[0]].title}), what are the top 5 high-demand careers and 3 trending college majors for 2025? Provide a concise summary and explain why they are trending. Use Google Search to ensure data is current.`;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      });
+
+      const text = response.text;
+      setAiInsights(text || "Unable to fetch specific insights at this time.");
+      
+      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      if (chunks) {
+        const links = chunks
+          .filter(chunk => chunk.web)
+          .map(chunk => ({
+            title: chunk.web?.title || "Reference",
+            uri: chunk.web?.uri || ""
+          }))
+          .filter(link => link.uri);
+        setGroundingLinks(links);
+      }
+    } catch (error) {
+      console.error("AI Insight error:", error);
+      setAiInsights("An error occurred while fetching real-time data. Please try again later.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   if (step === 'intro') {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-xl p-8 md:p-12 text-center">
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+      <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-14 text-center border border-blue-100">
+          <div className="w-20 h-20 bg-blue-700 text-white rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">Pathfinder Career Quest</h1>
-          <p className="text-slate-600 text-lg mb-8 leading-relaxed">
-            Discover your professional personality using the RIASEC model. Answer 42 simple questions about your interests to find your matching career pathways.
+          <h1 className="text-3xl md:text-4xl font-bold text-blue-900 mb-4 tracking-tight">Career Pathfinder</h1>
+          <p className="text-slate-500 text-lg mb-10 leading-relaxed max-w-lg mx-auto">
+            Discover your interests and find the right educational pathway for your future.
           </p>
           <button
             onClick={() => setStep('quiz')}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-emerald-200"
+            className="w-full py-4 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95 text-lg"
           >
-            Start Interest Test
+            Start Interest Assessment
           </button>
-          <p className="mt-4 text-sm text-slate-400">Takes approximately 5-7 minutes</p>
+          <div className="mt-8 pt-8 border-t border-slate-100 grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-700">42</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Statements</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-700">6</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Categories</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-700">100+</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Careers</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -66,156 +136,239 @@ const App: React.FC = () => {
     const progress = ((currentQuestionIndex + 1) / QUESTIONS.length) * 100;
 
     return (
-      <div className="min-h-screen bg-slate-50 p-4 md:p-8 flex flex-col items-center">
+      <div className="min-h-screen bg-[#f8fafc] p-4 md:p-12 flex flex-col items-center">
         <div className="max-w-xl w-full">
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-semibold text-emerald-600 uppercase tracking-wider">Question {currentQuestionIndex + 1} of 42</span>
-              <span className="text-sm font-medium text-slate-400">{Math.round(progress)}% Complete</span>
+          <div className="mb-12">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-xs font-bold text-blue-700 uppercase tracking-widest">Statement {currentQuestionIndex + 1} of 42</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{Math.round(progress)}% Complete</span>
             </div>
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+              <div className="bg-blue-600 h-full transition-all duration-300 ease-out" style={{ width: `${progress}%` }}></div>
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-lg p-8 md:p-12 mb-6 min-h-[300px] flex flex-col justify-center text-center">
-            <h2 className="text-2xl md:text-3xl font-medium text-slate-800 leading-snug">
-              "{q.text}"
+          <div className="bg-white rounded-xl shadow-sm p-10 md:p-16 mb-8 min-h-[300px] flex flex-col justify-center text-center border border-slate-200 relative">
+            <h2 className="text-2xl md:text-3xl font-semibold text-slate-800 leading-relaxed">
+              {q.text}
             </h2>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => handleAnswer(true)}
-              className="py-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-95 text-xl flex flex-col items-center"
+              className="py-5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg shadow-md transition-all active:scale-95 text-xl flex items-center justify-center gap-2"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
-              YES
+              Yes
             </button>
             <button
               onClick={() => handleAnswer(false)}
-              className="py-6 bg-white hover:bg-slate-50 text-slate-600 border-2 border-slate-200 font-bold rounded-2xl shadow-sm transition-all active:scale-95 text-xl flex flex-col items-center"
+              className="py-5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 font-bold rounded-lg shadow-sm transition-all active:scale-95 text-xl flex items-center justify-center gap-2"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              NO
+              No
             </button>
           </div>
           
-          <button 
-            onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-            className="mt-8 text-slate-400 hover:text-slate-600 text-sm font-medium underline underline-offset-4 w-full"
-            disabled={currentQuestionIndex === 0}
-          >
-            Go Back to Previous Question
-          </button>
+          <div className="mt-8 flex justify-center">
+            <button 
+              onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+              className={`text-slate-400 hover:text-blue-700 text-sm font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${currentQuestionIndex === 0 ? 'opacity-0 cursor-default' : 'opacity-100'}`}
+              disabled={currentQuestionIndex === 0}
+            >
+              Back
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Header */}
-      <div className="bg-emerald-600 text-white pt-16 pb-24 px-4 text-center">
-        <h2 className="text-emerald-100 text-sm font-bold uppercase tracking-widest mb-2">Quiz Results</h2>
-        <h1 className="text-5xl font-black mb-4">My Interest Code: {results.code}</h1>
-        <p className="max-w-2xl mx-auto opacity-90 text-lg">
-          Based on your answers, these are the three areas that best describe your vocational interests.
-        </p>
+    <div className="min-h-screen bg-white pb-24">
+      {/* Header Section */}
+      <div className="bg-blue-900 text-white pt-20 pb-32 px-4 text-center">
+        <div className="max-w-4xl mx-auto">
+          <span className="inline-block px-4 py-1 bg-blue-800 text-blue-200 rounded-full text-[10px] font-bold uppercase tracking-widest mb-4 border border-blue-700">Assessment Result</span>
+          <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">Your Holland Code: <span className="text-blue-300">{results.code}</span></h1>
+          <p className="text-blue-100 text-lg md:text-xl font-medium opacity-90 leading-relaxed max-w-2xl mx-auto">
+            Your interests are primarily focused on <span className="text-white font-bold">{CATEGORY_DESCRIPTIONS[results.topThree[0]].title}</span> environments.
+          </p>
+        </div>
       </div>
 
-      <div className="max-w-6xl mx-auto -mt-12 px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Top 3 Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {results.topThree.map((key) => {
-            const desc = CATEGORY_DESCRIPTIONS[key];
-            const score = results.scores[key];
-            return (
-              <div key={key} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-sm mb-2">Category: {key}</span>
-                    <h3 className="text-2xl font-bold text-slate-900">{desc.title}</h3>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-black text-emerald-600">{score}</div>
-                    <div className="text-xs text-slate-400 font-bold uppercase">Points</div>
-                  </div>
+      <div className="max-w-7xl mx-auto -mt-16 px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Main Content Area */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* Real-time Insights (NEW) */}
+            <section className="bg-white rounded-xl shadow-lg border border-blue-100 p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-blue-900 mb-1">2025 Career Insights</h2>
+                  <p className="text-slate-500 text-sm">Powered by Google Search grounding for real-time market data.</p>
                 </div>
-                <p className="text-slate-600 leading-relaxed mb-6">
-                  {desc.description}
-                </p>
-                
-                <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Matching Career Pathways</h4>
-                <div className="flex flex-wrap gap-2">
-                  {PATHWAYS_BY_CATEGORY[key].map(path => (
-                    <span key={path} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-full text-sm font-medium border border-slate-200">
-                      {path}
-                    </span>
-                  ))}
-                </div>
+                <button 
+                  onClick={fetchRealTimeInsights}
+                  disabled={isSearching}
+                  className="px-6 py-3 bg-blue-700 hover:bg-blue-800 disabled:bg-slate-400 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-md"
+                >
+                  {isSearching ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      Updating Data...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Get Latest Trends
+                    </>
+                  )}
+                </button>
               </div>
-            );
-          })}
-        </div>
 
-        {/* Right Column: Score Summary & Occupations */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-              Score Breakdown
-            </h3>
-            <div className="space-y-4">
-              {(Object.keys(results.scores) as CategoryKey[]).map(key => (
-                <div key={key}>
-                  <div className="flex justify-between text-xs font-bold text-slate-400 mb-1">
-                    <span>{CATEGORY_DESCRIPTIONS[key].title}</span>
-                    <span>{results.scores[key]}/7</span>
+              {aiInsights ? (
+                <div className="space-y-6">
+                  <div className="prose prose-blue max-w-none text-slate-700 leading-relaxed">
+                    <div className="whitespace-pre-wrap font-medium">{aiInsights}</div>
                   </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-1000 ${results.topThree.includes(key) ? 'bg-emerald-500' : 'bg-slate-300'}`} 
-                      style={{ width: `${(results.scores[key] / 7) * 100}%` }}
-                    ></div>
-                  </div>
+                  
+                  {groundingLinks.length > 0 && (
+                    <div className="mt-8 pt-6 border-t border-slate-100">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Sources & Further Reading</h4>
+                      <div className="flex flex-wrap gap-3">
+                        {groundingLinks.map((link, idx) => (
+                          <a 
+                            key={idx} 
+                            href={link.uri} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-md hover:bg-blue-100 transition-colors border border-blue-100"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            {link.title}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              ) : !isSearching && (
+                <div className="py-12 text-center border-2 border-dashed border-blue-50 rounded-xl">
+                  <p className="text-slate-400 font-medium">Click the button above to discover current trending careers for your code.</p>
+                </div>
+              )}
+            </section>
+
+            {/* Interest Area Breakdown */}
+            <section className="space-y-6">
+              <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2">Top Interest Areas</h2>
+              {results.topThree.map((key) => {
+                const desc = CATEGORY_DESCRIPTIONS[key];
+                return (
+                  <div key={key} className="bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden group hover:border-blue-200 transition-all">
+                    <div className="p-8">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-lg flex items-center justify-center font-black text-white text-xl shadow-md" style={{ backgroundColor: desc.color }}>
+                          {key}
+                        </div>
+                        <h3 className="text-2xl font-bold text-slate-900">{desc.title}</h3>
+                        <div className="ml-auto text-right">
+                          <span className="text-2xl font-black text-blue-900">{results.scores[key]}</span>
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-widest">Score</span>
+                        </div>
+                      </div>
+                      <p className="text-slate-600 leading-relaxed mb-8 italic font-medium">
+                        "{desc.description}"
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-50">
+                        <div>
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Common Majors</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {desc.majors.map(m => (
+                              <span key={m} className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md text-[11px] font-bold border border-blue-100">{m}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Career Pathways</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {PATHWAYS_BY_CATEGORY[key].map(p => (
+                              <span key={p} className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-md text-[11px] font-bold border border-slate-200">{p}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
           </div>
 
-          <div className="bg-emerald-900 text-white rounded-2xl shadow-lg p-6 overflow-hidden relative">
-            <div className="relative z-10">
-              <h3 className="text-xl font-bold mb-4">Sample Occupations</h3>
-              <p className="text-emerald-100 text-sm mb-6 leading-relaxed">
-                Based on your primary interest ({CATEGORY_DESCRIPTIONS[results.topThree[0]].title}), here are some careers to explore:
-              </p>
-              <ul className="space-y-3">
-                {CAREER_DATABASE[results.topThree[0]].slice(0, 10).map(occ => (
-                  <li key={occ} className="flex items-center text-sm group">
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full mr-3 group-hover:scale-150 transition-transform"></span>
+          {/* Sidebar Area */}
+          <div className="lg:col-span-4 space-y-8">
+            
+            {/* Occupation Table */}
+            <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-8 sticky top-8">
+              <h3 className="text-lg font-bold text-blue-900 mb-6">Occupation List</h3>
+              <div className="mb-6 relative">
+                <input 
+                  type="text" 
+                  placeholder="Filter careers..." 
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  value={occupationSearch}
+                  onChange={(e) => setOccupationSearch(e.target.value)}
+                />
+                <svg className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              
+              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {filteredOccupations.map(occ => (
+                  <div key={occ} className="p-3 text-xs font-bold text-slate-600 bg-slate-50 rounded-md border border-slate-100 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-default">
                     {occ}
-                  </li>
+                  </div>
                 ))}
-              </ul>
-              <button 
-                onClick={() => window.location.reload()}
-                className="mt-8 w-full py-3 bg-white text-emerald-900 font-bold rounded-xl text-sm hover:bg-emerald-50 transition-colors"
-              >
-                Retake Assessment
-              </button>
+              </div>
+
+              <div className="mt-8 pt-8 border-t border-slate-100">
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="w-full py-3 bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-all"
+                >
+                  Retake Quiz
+                </button>
+              </div>
             </div>
-            {/* Background Decoration */}
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-800 rounded-full blur-3xl opacity-50"></div>
+
           </div>
         </div>
       </div>
+      
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+      `}</style>
     </div>
   );
 };
