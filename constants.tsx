@@ -131,7 +131,7 @@ export const CAREER_DATABASE: Record<CategoryKey, string[]> = {
     "Sales Manager", "Travel Agent"
   ],
   C: [
-    "Account accountant", "Actuary", "Archivist", "Assessor", "Auditor", "Bill and Account Collector",
+    "Accountant", "Actuary", "Archivist", "Assessor", "Auditor", "Bill and Account Collector",
     "Bookkeeping Clerk", "Budget Analyst", "Cashier", "Computer Operator", "Cost Estimator", "Data Entry Keyer",
     "Database Administrator", "File Clerk", "Financial Analyst", "Insurance Underwriter", "Legal Secretary",
     "Loan Officer", "Medical Records Technician", "New Accounts Clerk", "Payroll Clerk", "Pharmacy Technician",
